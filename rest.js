@@ -382,7 +382,8 @@ REST_ROUTER.prototype.handleRoutes= function(router, connection, md5) {
 
     router.get("/category/:id",function(req,res){
         var query = "SELECT categories.id, categories.title, categories.descr, categories.id_competition, " +
-        "categories.dist, competitions.title as competition_title, competitions.show_laps as show_laps, competitions.logo as logo  " +
+        "categories.dist, competitions.title as competition_title, competitions.show_laps as show_laps, competitions.logo as logo, " +
+        "competitions.start_date, competitions.location " + 
         "FROM categories " +
         "left join competitions on (competitions.id = categories.id_competition) " +
         "WHERE categories.id = ?";
