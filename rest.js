@@ -14,6 +14,68 @@ REST_ROUTER.prototype.handleRoutes= function(router, connection, md5) {
     });
 
     router.get("/users",function(req,res){
+        var query = "SELECT * FROM users";
+        connection.query(query,function(err,rows){
+            if (err) {
+                console.log(err);
+                res.status(500).json({"error": {
+                    "message": "SQL error",
+                    "origin": err
+                }});
+                return;
+            } else {
+                res.status(200).json({"data": rows, "total": rows.length});
+                return;
+            }
+        });
+    });
+
+    router.get("/users/:user_id",function(req,res){
+        var query = "SELECT * FROM users WHERE id = ?";
+        query = mysql.format(query, req.params.user_id);
+        connection.query(query,function(err,rows){
+            if (err) {
+                res.status(500).json({"error": {
+                    "message": "SQL error",
+                    "origin": err
+                }});
+                return;
+            } else {
+                if (rows.length !== 0) {
+                    res.status(200).json({"data": rows[0]});
+                    return;
+                } else {
+                    res.status(404).json({"error": {"message": "user not found"}});
+                    return;
+                }
+            }
+        });
+    });
+
+    router.get("/users/facebook/:user_id",function(req,res){
+        var query = "SELECT * FROM users WHERE fb_id = ?";
+        query = mysql.format(query, req.params.user_id);
+        connection.query(query,function(err,rows){
+            if (err) {
+                res.status(500).json({"error": {
+                    "message": "SQL error",
+                    "origin": err
+                }});
+                return;
+            } else {
+                if (rows.length !== 0) {
+                    res.status(200).json({"data": rows[0]});
+                    return;
+                } else {
+                    res.status(404).json({"error": {"message": "user not found"}});
+                    return;
+                }
+            }
+        });
+    });
+
+    //old users
+    router.get("/users2",function(req,res){
         var query = "SELECT * FROM user_login";
         connection.query(query,function(err,rows){
             if (err) {
@@ -30,8 +92,8 @@ REST_ROUTER.prototype.handleRoutes= function(router, connection, md5) {
         });
     });
 
-    router.get("/users/:user_id",function(req,res){
-        var query = "SELECT * FROM user_login WHERE user_id = ?";
+    router.get("/users2/:user_id",function(req,res){
+        var query = "SELECT * FROM user_login WHERE id = ?";
         query = mysql.format(query, req.params.user_id);
         connection.query(query,function(err,rows){
             if (err) {
@@ -52,7 +114,7 @@ REST_ROUTER.prototype.handleRoutes= function(router, connection, md5) {
         });
     });
 
-    router.post("/users", function(req, res){
+    router.post("/users2", function(req, res){
         var query = "INSERT INTO user_login (user_email, user_password) VALUES (?,?)";
         var table = [
         	req.body.email,
@@ -85,7 +147,7 @@ REST_ROUTER.prototype.handleRoutes= function(router, connection, md5) {
         });
     });
 
-    router.put("/users/:id", function(req, res) {
+    router.put("/users2/:id", function(req, res) {
     	var old_pass = md5(req.body.password);
     	var passed = false;
         var query = "select user_password, user_email from user_login WHERE user_id = ?";
@@ -142,13 +204,15 @@ REST_ROUTER.prototype.handleRoutes= function(router, connection, md5) {
         var query = "select " + 
         	"competitions.title, competitions.id, competitions.location, " +
         	"competitions.start_date, competitions_type.id as type_id, " +
-        	"competitions_type.title as type_title, count(competitors.id) as competitors_count " + 
+        	"competitions_type.title as type_title, count(competitors.id) as competitors_count, " +
+            "competitions.logo_large, competitions.logo " + 
         	"from competitions " +
         	"inner join competitions_type on (competitions_type.id = competitions.competition_type) " +
             "left join categories on (categories.id_competition = competitions.id) " +
             "left join competitors on (competitors.id_category = categories.id) " +
             "where (status <> 0) " +
             "group by competitions.title, competitions.id, competitions.location, " +
+            "competitions.logo_large, competitions.logo, " +
             "competitions.start_date, competitions_type.id, competitions_type.title " +
             "order by competitions.start_date desc";
         connection.query(query,function(err,rows){
@@ -584,7 +648,7 @@ REST_ROUTER.prototype.handleRoutes= function(router, connection, md5) {
             if (err) {
                 console.log(err);
                 res.status(500).json({"error": {
-                    "message": "SQL error",
+                    "message": "/category/:id/results [001] SQL error",
                     "origin": err
                 }});
                 return;
@@ -601,13 +665,19 @@ REST_ROUTER.prototype.handleRoutes= function(router, connection, md5) {
                         if (err) {
                             console.log(err);
                             res.status(500).json({"error": {
-                                "message": "SQL error",
+                                "message": "/category/:id/results [002] SQL error",
                                 "origin": err
                             }});
                             return;
                         } else {
                             rows.map(function(row) {
                                 row.laps = [];
+                                row.total = {
+                                    dist: 0,
+                                    speed: 'n/a',
+                                    pace: 'n/a',
+                                    position: 'n/a'
+                                }
                                 for (var i = 0; i < laps.length; i++) {
                                     row.laps.push({
                                         id: laps[i].id,
@@ -629,7 +699,7 @@ REST_ROUTER.prototype.handleRoutes= function(router, connection, md5) {
                                 }
                             });
                             resquery = "SELECT " +
-                            "id, id_lap, id_competitor, result " +
+                            "id, id_lap, id_competitor, result, skiped " +
                             "FROM results " +
                             "WHERE " +
                             "(id_lap in (select id from laps where id_category = ?)) and " +
@@ -640,7 +710,7 @@ REST_ROUTER.prototype.handleRoutes= function(router, connection, md5) {
                                 if (err) {
                                     console.log(err);
                                     res.status(500).json({"error": {
-                                        "message": "SQL error",
+                                        "message": "/category/:id/results [003] SQL error",
                                         "origin": err
                                     }});
                                     return;
@@ -652,6 +722,7 @@ REST_ROUTER.prototype.handleRoutes= function(router, connection, md5) {
                                         if (competitorResults.length > 0) {  
                                             var cell = competitorResults[0].laps.find(l => l.id === result.id_lap);
                                             if (cell !== undefined) {
+                                                cell.skiped = (result.skipped === 1);
                                                 if (result.result.toLowerCase() === 'n/a') {
                                                     cell.ms = -1;
                                                 } else if (result.result === '0') {
@@ -671,6 +742,7 @@ REST_ROUTER.prototype.handleRoutes= function(router, connection, md5) {
                                             }
                                         }    
                                     });
+                                    //summaryTimes(rows);
                                     timePosition(rows);
                                     res.status(200).json({"data": sortResults(rows)});
                                     return;
