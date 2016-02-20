@@ -30,9 +30,9 @@ REST_ROUTER.prototype.handleRoutes= function(router, connection, md5) {
         });
     });
 
-    router.get("/users/:user_id",function(req,res){
+    router.get("/users/:id",function(req,res){
         var query = "SELECT * FROM users WHERE id = ?";
-        query = mysql.format(query, req.params.user_id);
+        query = mysql.format(query, req.params.id);
         connection.query(query,function(err,rows){
             if (err) {
                 res.status(500).json({"error": {
@@ -52,9 +52,9 @@ REST_ROUTER.prototype.handleRoutes= function(router, connection, md5) {
         });
     });
 
-    router.get("/users/facebook/:user_id",function(req,res){
+    function getUser(req, res) {
         var query = "SELECT * FROM users WHERE fb_id = ?";
-        query = mysql.format(query, req.params.user_id);
+        query = mysql.format(query, req.body.id);
         connection.query(query,function(err,rows){
             if (err) {
                 res.status(500).json({"error": {
@@ -67,11 +67,38 @@ REST_ROUTER.prototype.handleRoutes= function(router, connection, md5) {
                     res.status(200).json({"data": rows[0]});
                     return;
                 } else {
-                    res.status(404).json({"error": {"message": "user not found"}});
-                    return;
+                    return regisrerUser(req, res);
                 }
             }
         });
+
+    }
+
+
+    function regisrerUser(req, res) {
+        var query = "INSERT INTO users (fb_id, firstname, lastname, sex) VALUES (?, ?, ?, ?)";
+        var table = [
+            req.body.id,
+            req.body.first_name || ("User [" + req.body.id + "]"),
+            req.body.last_name || "",
+            req.body.gender === "male" ? "m" : req.body.gender === "female" ? "f" : ""
+        ];
+        query = mysql.format(query, table);
+        connection.query(query, function(err, rows){
+            if (err) {
+                res.status(500).json({"error": {
+                    "message": "SQL error",
+                    "origin": err
+                }});
+                return;
+            } else {
+                return getUser(req, res);
+            }
+        });
+    }
+
+    router.post("/users/facebook",function(req, res) {
+        return getUser(req, res);
     });
 
     //old users
