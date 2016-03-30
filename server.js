@@ -8,7 +8,11 @@ var express       = require('express'),
     errorhandler  = require('errorhandler'),
     cors          = require('cors'),
     dotenv        = require('dotenv'),
-	rest          = require("./rest.js");
+	profile       = require("./routes/profile.js"),
+	competitions  = require("./routes/competitions.js"),
+	competitors   = require("./routes/competitors.js"),
+	statistic     = require("./routes/statistic.js");
+	articles      = require("./routes/articles.js");
 
 
 var app = express();
@@ -37,7 +41,7 @@ REST.prototype.connectMysql = function() {
 
 var allowCrossDomain = function(req, res, next) {
     //res.header('Access-Control-Allow-Origin', 'http://localhost:3000');
-    res.header('Access-Control-Allow-Origin', 'http://pandarun.com.ua');
+    res.header('Access-Control-Allow-Origin', 'http://pandarun.com.ua:3001');
     res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE');
     res.header('Access-Control-Allow-Headers', 'Content-Type');
 
@@ -67,19 +71,20 @@ REST.prototype.configureExpress = function(connection) {
   		app.use(errorhandler())
 	}
 
-	app.use(require('./anonymous-routes'));
-	app.use(require('./protected-routes'));
-	app.use(require('./user-routes'));
-	
 	var router = express.Router();
 	app.use('/api', router);
-	var rest_router = new rest(router, connection, md5);
+	var profile_router      = new profile(router, connection, md5);
+	var competitions_router = new competitions(router, connection, md5);
+	var competitors_router  = new competitors(router, connection, md5);
+	var statistic_router    = new statistic(router, connection, md5);
+	var articles_router     = new articles(router, connection, md5);
+
 	self.startServer();
 
 }
 
 REST.prototype.startServer = function() {
-	http.createServer(app).listen(port, function() {
+	var server = http.createServer(app).listen(port, function() {
 		console.log('=== server started ===');
 		console.log('panda-api alive at port ' + port);
 	});
